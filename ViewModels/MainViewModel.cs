@@ -2,12 +2,6 @@
 using AuroraForcastMS.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using IntelliJ.Lang.Annotations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AuroraForcastMS.ViewModels
 {
@@ -15,18 +9,19 @@ namespace AuroraForcastMS.ViewModels
     {
         private readonly AuroraService _auroraService;
 
+        // Här använder vi den klassiska stilen: attribut på privat fält.
+        // Detta genererar automatiskt egenskapen 'CurrentKp' (stor bokstav).
         [ObservableProperty]
         private KpIndexInfo _currentKp;
 
         [ObservableProperty]
         private bool _isBusy;
 
-        public MainViewModel()
+        public MainViewModel(AuroraService auroraService)
         {
-            _auroraService = new AuroraService();
-            // Hämtar data direkt när appen startar
+            _auroraService = auroraService;
             LoadDataCommand = new AsyncRelayCommand(RefreshDataAsync);
-            RefreshDataAsync();
+            _ = RefreshDataAsync();
         }
 
         public IAsyncRelayCommand LoadDataCommand { get; }
@@ -34,15 +29,15 @@ namespace AuroraForcastMS.ViewModels
         private async Task RefreshDataAsync()
         {
             if (IsBusy) return;
-
             try
             {
                 IsBusy = true;
-                var data = await _auroraService.GetCurrentKpIndexAsync();
-                if (data != null)
-                {
-                    CurrentKp = data;
-                }
+                // Använd stor bokstav här då den genereras av toolkitet
+                CurrentKp = await _auroraService.GetCurrentKpIndexAsync();
+            }
+            catch
+            {
+                // Tyst catch för att inte krascha under bygget
             }
             finally
             {

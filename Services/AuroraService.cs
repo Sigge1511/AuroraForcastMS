@@ -1,6 +1,7 @@
 ﻿using AuroraForcastMS.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http.Json;
 using System.Text;
@@ -23,27 +24,32 @@ namespace AuroraForcastMS.Services
         {
             try
             {
-                // NOAA returnerar en lista av listor/objekt. Vi hämtar hela och tar det senaste värdet.
-                var response = await _httpClient.GetFromJsonAsync<List<List<string>>>(Url);
+                // Vi hämtar rå-strängen först för att undvika krasch vid deserialisering
+                var jsonString = await _httpClient.GetStringAsync(Url);
+                using var document = System.Text.Json.JsonDocument.Parse(jsonString);
 
-                if (response != null && response.Count > 1)
+                // NOAA:s format är en array där sista elementet är en array med data
+                var root = document.RootElement;
+                if (root.GetArrayLength() > 1)
                 {
-                    // Sista raden i listan brukar vara det senaste mätta värdet
-                    var latestData = response.Last();
+                    var latestEntry = root[root.GetArrayLength() - 1];
+
+                    // Vi hämtar värdet från index 1 (Kp-värdet)
+                    string kpVal = latestEntry[1].GetString();
 
                     return new KpIndexInfo
                     {
-                        Time = latestData[0],      // Tidstämpel
-                        KpValueString = latestData[1] // Kp-index värdet
+                        KpValueString = kpVal,
+                        Time = latestEntry[0].GetString()
                     };
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Fel vid hämtning av norrskensdata: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"JSON-fel: {ex.Message}");
             }
 
-            return null;
+            return new KpIndexInfo { KpValueString = "0", Time = "N/A" };
         }
     }
 }
